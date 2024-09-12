@@ -5,6 +5,13 @@ format:
     embed-resources: true
 editor: visual
 ---
+Group Exercise from Group 4
+Edir Sebastian Vidal Castro (s243564)
+Morten Orebo, Holmström (s242223)
+Nithiyashri, Jayashankar (s244356)
+Tilman Johannes, Nelissen (s233043)
+Thea Rehm Rosholm (s225019)
+
 
 
 Loading packages
