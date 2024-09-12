@@ -6,31 +6,51 @@ format:
 editor: visual
 ---
 
-Group Exercise from Group 4 
+### Group Exercise from Group 4 
+
 Edir Sebastian Vidal Castro (s243564), 
 Morten Orebo Holmström (s242223),
 Nithiyashri Jayashankar (s244356),
 Tilman Johannes Nelissen (s233043),
 Thea Rehm Rosholm (s225019)
 
-Loading packages
+### Downloading packages
+
+(remove comment for the corresponding packages)
+
+```{r}
+#install.packages("tidyverse")
+#install.packages("ggridges")
+#install.packages("RColorBrewer")
+#install.packages("curl")
+```
+
+### Loading packages
 
 ```{r}
 library("tidyverse")
 library("ggridges")
 library("RColorBrewer")
+library("curl")
 ```
 
-Reading in the data
+### Reading in the data
 
 Using the curl_download with arguments url = the webpage/URL, destfile = the name of the data file.
 
 ```{r}
 target_url <- "https://github.com/ramhiser/datamicroarray/raw/master/data/gravier.RData" 
 
-output_file <- "gravier.RData" 
+main_dir <- getwd()
 
-curl::curl_download(url = target_url, destfile = output_file)
+if(file.exists("data/")==FALSE){
+  dir.create(file.path(main_dir, "data/"))
+}
+
+output_file <- "data/gravier.RData" 
+
+curl::curl_download(url = target_url,
+                    destfile = output_file)
 ```
 
 Loading output file and checking that the file is in our environment.
@@ -40,31 +60,34 @@ load(output_file)
 ls()
 ```
 
-Data wrangling, which was predefined.
+### Data wrangling
 
 ```{r}
 set.seed(676571)
 
-cancer_data=mutate(as_tibble(pluck(gravier,"x")),y=pluck(gravier,"y"),pt_id=1:length(pluck(gravier, "y")),age=round(rnorm(length(pluck(gravier,"y")),mean=55,sd=10),1))
+cancer_data <- gravier |> 
+  bind_cols() |> 
+  rename(event_label = y) |>
+  mutate(pt_id = 1:length(pluck(gravier, "y")),
+         age = round(rnorm(length(pluck(gravier, "y")),mean=55,sd=10),1))
+  
+cancer_data$age_group <- cut(cancer_data$age, breaks=seq(10,100,by=10))
 
-cancer_data=rename(cancer_data,event_label=y)
-
-cancer_data$age_group=cut(cancer_data$age,breaks=seq(10,100,by=10))
-
-cancer_data=relocate(cancer_data,c(pt_id,age,age_group,pt_id,event_label))
+cancer_data <- cancer_data |>
+  relocate(c(pt_id,age,age_group,pt_id,event_label))
 ```
 
 We chose the probe g1A08 and use the package ggridges to show the distribution of probe fluorescence between patients with a good outcome and poor outcome.
 
 ```{r}
-ggplot(cancer_data, aes(x = g1A08, 
-                        y = event_label,
-                        fill = event_label)) +
+cancer_data |>
+  ggplot(aes(x = g1A08, 
+             y = event_label, fill = event_label)) +
   geom_density_ridges(alpha = 0.7) +
   theme_bw() +
   labs(y = "Outcome",
        x = "Fluoresence",
-       title = "Fluorescence of probe g1A08 (log2 transformed) stratified on patient outcome") +
+       title = "Fluorescence of probe g1A08 (log2 transformed) stratified on patient \noutcome") +
   theme(legend.position = "none") + 
   scale_fill_brewer(palette = "Set2")
 ```
