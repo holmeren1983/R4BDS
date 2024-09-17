@@ -1,0 +1,97 @@
+---
+title: "Lab 3 Assignment: Group 04"
+format: html
+editor: visual
+---
+
+### Group Exercise from Group 4 
+
+- Edir Sebastian Vidal Castro (s243564), 
+- Morten Orebo Holmström (s242223),
+- Nithiyashri Jayashankar (s244356),
+- Tilman Johannes Nelissen (s233043),
+- Thea Rehm Rosholm (s225019)
+
+
+### Loading packages
+```{r}
+library("tidyverse")
+library("RColorBrewer")
+library("here")
+```
+
+Loading the data. We use the here function, as we have our working directory in the scripts. We want to save within the data/_raw folder and also load the data from here. That is why we use the here function.
+
+```{r}
+#| echo: true
+#| eval: true
+
+base_url <- "http://userweb.eng.gla.ac.uk/umer.ijaz/bioinformatics/ecological/"
+raw_data_path <- "data/_raw/"
+
+SPE <- read_csv(file = str_c(base_url, "SPE_pitlatrine.csv"))
+
+write_csv(x = SPE,
+          file = here(str_c(raw_data_path, "SPE_pitlatrine.csv")))
+
+ENV <- read_csv(file = str_c(base_url, "ENV_pitlatrine.csv"))
+
+write_csv(x = ENV,
+          file = here(str_c(raw_data_path, "ENV_pitlatrine.csv")))
+```
+
+
+
+
+```{r}
+#| eval: true
+#| echo: true
+
+SPE |> 
+  pivot_longer(cols = -Taxa,
+               names_to = "Samples",
+               values_to = "OTU_Count")  |> 
+  full_join(ENV, by = "Samples") |> 
+  mutate(site = case_when(str_detect(Samples, "^T") ~ "Tanzania",
+                          str_detect(Samples, "^V") ~ "Vietnam")) |>  
+  write_tsv(file = here("data/SPE_ENV.tsv"))
+```
+
+Loading the data
+```{r}
+SPE_ENV <- read_tsv(file = here("data/SPE_ENV.tsv"))
+SPE_ENV
+```
+
+
+
+
+
+### Writing code for our really nice figure
+```{r}
+SPE_ENV %>% 
+  filter(Taxa == "Bacteroidia") %>% #Filtering for Bacteroidia only 
+ggplot(mapping = aes(x = Prot, # Mapping to proteins and carbohydrates
+                     y = Carbo)) + 
+  geom_point(aes(size = OTU_Count, #Showing the OTU counts as the size of the geom_point
+                 fill = site), 
+             shape = 21, 
+             alpha = 0.5, # adding some transparency due to data overlap
+             color = "black", # we like the black borders of the points
+             position = position_jitter(width = 0.3)) + #adding jitter as some points overlap
+  geom_smooth(aes(color = site), #adding line to show how the relationship between carbs and proteins
+              method = "lm",
+              show.legend = F) +
+  theme_bw() +
+  labs(title = "Impact of Carbohydrates and Proteins on OTU Counts of Taxa Bacteroidia\nin Vietnamese and Tanzanian Latrine Pitts",
+       x = "Protein",
+       y = "Carbohydrates",
+       caption = "Data from doi/10.1111/1751-7915.12334",
+       fill = "",
+       size = "OTU Count") +
+  guides(color = guide_legend(override.aes = list(fill = NA))) + 
+  theme(legend.position = "bottom") + 
+  scale_fill_brewer(palette = "Set1") + 
+  scale_color_brewer(palette = "Set1") #Setting the palette to Set1 as this one is nicer
+```
+
