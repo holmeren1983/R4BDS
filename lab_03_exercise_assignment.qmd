@@ -1,6 +1,8 @@
 ---
-title: "Lab 3 Assignment: Group 04"
-format: html
+title: "Lab 2 Assignment: Group 04"
+format:
+  html:
+    embed-resources: true
 editor: visual
 ---
 
@@ -20,11 +22,11 @@ library("RColorBrewer")
 library("here")
 ```
 
-Loading the data. We use the here function, as we have our working directory in the scripts. We want to save within the data/_raw folder and also load the data from here. That is why we use the here function.
+Loading the data. We use the `here` function, as we have our working directory in the scripts. We want to save within the `data/_raw` folder and also load the data from `here`. That is why we use the `here` function.
 
 ```{r}
 #| echo: true
-#| eval: true
+#| eval: false
 
 base_url <- "http://userweb.eng.gla.ac.uk/umer.ijaz/bioinformatics/ecological/"
 raw_data_path <- "data/_raw/"
@@ -67,31 +69,32 @@ SPE_ENV
 
 
 
-### Writing code for our really nice figure
+### Writing code for our figure
 ```{r}
 SPE_ENV %>% 
   filter(Taxa == "Bacteroidia") %>% #Filtering for Bacteroidia only 
 ggplot(mapping = aes(x = Prot, # Mapping to proteins and carbohydrates
                      y = Carbo)) + 
   geom_point(aes(size = OTU_Count, #Showing the OTU counts as the size of the geom_point
-                 fill = site), 
-             shape = 21, 
+                 fill = site), #coloring the points according to their site
+             shape = 21, #allows for a circle around the points
              alpha = 0.5, # adding some transparency due to data overlap
              color = "black", # we like the black borders of the points
              position = position_jitter(width = 0.3)) + #adding jitter as some points overlap
   geom_smooth(aes(color = site), #adding line to show how the relationship between carbs and proteins
-              method = "lm",
-              show.legend = F) +
-  theme_bw() +
+              method = "lm", #using a linear regression for the trend line
+              se = F, #removing the standard error 
+              show.legend = F) + #don't show the legend
+  theme_bw() + 
   labs(title = "Impact of Carbohydrates and Proteins on OTU Counts of Taxa Bacteroidia\nin Vietnamese and Tanzanian Latrine Pitts",
        x = "Protein",
        y = "Carbohydrates",
        caption = "Data from doi/10.1111/1751-7915.12334",
        fill = "",
        size = "OTU Count") +
-  guides(color = guide_legend(override.aes = list(fill = NA))) + 
-  theme(legend.position = "bottom") + 
-  scale_fill_brewer(palette = "Set1") + 
+  guides(color = guide_legend(override.aes = list(fill = NA))) + #remove the grey background from the legend
+  theme(legend.position = "bottom") + #position the legend at the bottom
+  scale_fill_brewer(palette = "Set1") + #change color of points
   scale_color_brewer(palette = "Set1") #Setting the palette to Set1 as this one is nicer
 ```
 
