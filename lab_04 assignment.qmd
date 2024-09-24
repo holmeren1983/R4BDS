@@ -27,7 +27,6 @@ library("here")
 # Loading data
 
 ```{r}
-getwd()
 diabetes_data <- read_csv(file = here("data/diabetes (1).csv"))
 ```
 
