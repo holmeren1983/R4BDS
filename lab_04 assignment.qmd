@@ -1,0 +1,162 @@
+---
+title: "Lab 4 Assignment Group 4"
+format: html
+editor: visual
+execute: 
+  warning: false
+---
+
+### Group Exercise from Group 4
+
+-   Edir Sebastian Vidal Castro (s243564),
+-   Morten Orebo Holmström (s242223),
+-   Nithiyashri Jayashankar (s244356),
+-   Tilman Johannes Nelissen (s233043),
+-   Thea Rehm Rosholm (s225019)
+
+### Loading packages
+```{r}
+#| message: false
+library("tidyverse")
+library("patchwork")
+library("here")
+```
+
+
+
+# Loading data
+
+```{r}
+getwd()
+diabetes_data <- read_csv(file = here("data/diabetes (1).csv"))
+```
+
+
+
+### T1
+Change `height`, `weight`, `waist` and `hip` variables from imperical to metric system. We need to use `mutate` to do this but first we need to know how to recalcuate from imperical to metric. 
+Conversion of inches to cm = inches x 2.54
+Conversion of pounds to kg = pounds x 0.45359237
+ 
+ And we should round to one decimal using the `round` function. 
+ 
+```{r}
+diabetes_data <- diabetes_data %>% 
+  mutate(m_height = height * 2.54,
+         m_weight = weight * 0.45359237,
+         m_waist = waist * 2.54,
+         m_hip = hip * 2.54) %>% 
+           mutate(across(starts_with("m_"), 
+                         ~round(., 1)))
+         
+
+```
+ 
+Okay, so an important lesson here is that we can use the `mutate(across())` function to apply a subsequent function to mutate. 
+So here we mutate across variables that `starts_with("m_")` which are our newly calculated variables, and then we apply the function `round` to these variables. As we use the `across` function we need to put the variables insinde round as a dot i.e. `round(., digits = 1)` and we need to provide a ~ before the `round` function. 
+
+
+### Q17 
+Creating new variable `BMI` which is `m_weight/((m_height/100)^2)`
+```{r}
+diabetes_data <- diabetes_data %>% 
+  mutate(BMI = m_weight/((m_height/100)^2))
+```
+
+
+### T7 
+Creating the variable `BFP` based on the equation 
+BFP = 1.39 x BMI + 0.16 x age - 10 x gender - 9. 
+where gender is 0 for female and 1 for male. 
+
+So essentially we need to create a new column termed `gender_number` which gets 0 for female and 1 for male. 
+```{r}
+diabetes_data <- diabetes_data %>% 
+  mutate(gender_number = case_when(gender == "female" ~ 0, 
+                                   gender == "male" ~ 1))
+```
+
+And then we can construct our new variable based on the formula:
+`mutate(BFP = 1.39 * BMI + 0.16 * age - 10 * gender_number - 9)`:
+```{r}
+diabetes_data <- diabetes_data %>% 
+  mutate(BFP = 1.39 * BMI + 0.16 * age - 10 * gender_number - 9)
+```
+
+
+### T8 
+Creating a `WHR`variable which is defined by: 
+`mutate(WHR = m_waist/m_hip)`
+
+```{r}
+diabetes_data <- diabetes_data %>% 
+  mutate(WHR = m_waist/m_hip)
+```
+
+
+### Q18
+What correlates better with BMI - WHR or BFP? 
+
+We can use the correlation coefficent for BMI vs. WHR and BFP respectively
+
+BMI correlation to WHR:
+```{r}
+cor(diabetes_data$BMI, diabetes_data$WHR, use = "complete.obs")
+```
+Correlation coefficient between DMI and WHR of 0.1 - a low correlation coefficient. 
+
+
+BMI correlation to BFP:
+```{r}
+cor(diabetes_data$BMI, diabetes_data$BFP, use = "complete.obs")
+```
+And for the BFP it is 0.89. Considerably higher correlation coefficient meaning, that BFP is better associated with BMI than WHR.  
+
+
+We use the geom_point to asses the assocation between BMI, WHR and BFP graphically and save the plot in the object `whr_plot`. We apply a regression line to show the relationship between BMI and WHR
+```{r}
+whr_plot <- ggplot(data = diabetes_data, 
+                   mapping = aes(x = BMI, 
+                                 y = WHR)
+                   ) + 
+  geom_point(alpha =0.6,
+             fill = "steelblue", 
+             shape = 21, 
+             size = 2) +
+  labs(title = "Correlation between body mass\n index and waist to hip ratio", 
+       y = "Waist to hip ratio", 
+       x = "Body mass index",
+       caption = "Pearsson correlation coefficent = 0.10")  + 
+  geom_smooth(method = "lm",
+              se = F) + 
+  theme_bw()
+
+
+whr_plot
+```
+
+
+We use the geom_point to asses the assocation between BMI, WHR and BFP graphically and save the plot in the object `bfp_plot`. We apply a regression line to show the relationship between BMI and BFP.
+```{r}
+bfp_plot <- ggplot(data = diabetes_data, 
+                   mapping = aes(x = BMI, 
+                                 y = BFP)
+                   ) + 
+  geom_point(alpha =0.6,
+             fill = "steelblue", 
+             shape = 21, 
+             size = 2) +
+  labs(title = "Correlation between body mass\n index and body fat percentage", 
+       y = "Body fat percentage", 
+       x = "Body mass index", 
+       caption = "Pearsson correlation coefficent = 0.89")  + 
+  geom_smooth(method = "lm",
+              se = F) + 
+  theme_bw()
+bfp_plot
+```
+
+We use that `patchwork` package merge the two plots into one nice plot. 
+```{r}
+whr_plot + bfp_plot
+```
