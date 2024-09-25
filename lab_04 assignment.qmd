@@ -40,11 +40,11 @@ Conversion of pounds to kg = pounds x 0.45359237
  And we should round to one decimal using the `round` function. 
  
 ```{r}
-diabetes_data <- diabetes_data %>% 
+diabetes_data <- diabetes_data |> 
   mutate(m_height = height * 2.54,
          m_weight = weight * 0.45359237,
          m_waist = waist * 2.54,
-         m_hip = hip * 2.54) %>% 
+         m_hip = hip * 2.54) |> 
            mutate(across(starts_with("m_"), 
                          ~round(., 1)))
          
@@ -58,7 +58,7 @@ So here we mutate across variables that `starts_with("m_")` which are our newly 
 ### Q17 
 Creating new variable `BMI` which is `m_weight/((m_height/100)^2)`
 ```{r}
-diabetes_data <- diabetes_data %>% 
+diabetes_data <- diabetes_data |> 
   mutate(BMI = m_weight/((m_height/100)^2))
 ```
 
@@ -70,7 +70,7 @@ where gender is 0 for female and 1 for male.
 
 So essentially we need to create a new column termed `gender_number` which gets 0 for female and 1 for male. 
 ```{r}
-diabetes_data <- diabetes_data %>% 
+diabetes_data <- diabetes_data |> 
   mutate(gender_number = case_when(gender == "female" ~ 0, 
                                    gender == "male" ~ 1))
 ```
@@ -78,7 +78,7 @@ diabetes_data <- diabetes_data %>%
 And then we can construct our new variable based on the formula:
 `mutate(BFP = 1.39 * BMI + 0.16 * age - 10 * gender_number - 9)`:
 ```{r}
-diabetes_data <- diabetes_data %>% 
+diabetes_data <- diabetes_data |> 
   mutate(BFP = 1.39 * BMI + 0.16 * age - 10 * gender_number - 9)
 ```
 
@@ -88,7 +88,7 @@ Creating a `WHR`variable which is defined by:
 `mutate(WHR = m_waist/m_hip)`
 
 ```{r}
-diabetes_data <- diabetes_data %>% 
+diabetes_data <- diabetes_data |> 
   mutate(WHR = m_waist/m_hip)
 ```
 
