@@ -1,0 +1,500 @@
+---
+title: "R4BDS - Week 5"
+format: html
+editor: visual
+---
+
+## Getting started
+
+Data was obtained from: https://clients.adaptivebiotech.com/pub/covid-2020. We will be using the files `peptide-detail-ci.csv` and `subject-metadata.csv` for constructing a micro-report answering the following two questions:
+
+-   What characterises the peptides binding to the HLAs?
+
+-   What characterises T-cell Receptors binding to the pMHC-complexes?
+
+## Creating a Micro-Report
+
+#### Background
+
+In the early 20s, the world was hit by the coronavirus disease 2019 (COVID-19) pandemic. The pandemic was caused by severe acute respiratory syndrome coronavirus 2 (SARS-CoV-2). In Denmark, the virus first confirmed case was on 27 February 2020.
+
+While initially very little was known about the SARS-CoV-2 virus, we did know the general pathology of vira. Briefly, the virus invades the cells and hijacks the intra-cellular machinery. Using the hijacked machinery, components for new virus particles are produced, eventually being packed into the viral envelope and released from the infected cell. Some of these components, viral proteins, is broken down into smaller fragments called peptides by the proteasome. These peptides are transported into the endoplasmic reticulum by the Transporter Associated with antigen Processing (TAP) protein complex. Here, they are aided by chaperones bound to the Major Histocompatilibty Complex class I (MHC-I) and then across the Golgi apparatus they finally get displayed on the surface of the cells. Note, in humans, MHC is also called Human Leukocyte Antigen (HLA) and represents the most diverse genes. Each of us have a total of 6 HLA-alleles, 3 from the maternal and 3 from the paternal side. These are further divided into 3 classes HLA-A, HLA-B and HLA-C and the combination of these constitute the HLA-haplotype for an individual. Once the peptide is bound to the MHC class I at the cell surface and exposed, the MHC-I peptide complex can be recognised by CD8+ Cytotoxic T-Lymphocytes (CTLs) via the T-cell Receptor (TCR). If a cell displays peptides of viral origin, the CTL gets activated and via a cascade induces apoptosis (programmed cell death) of the infected cell. The process is summarised in the figure below ([McCarthy and Weinberg 2015](https://r4bds.github.io/references.html#ref-McCarthy2015)).
+
+The data we will be working with today contains data on sequenced T-cell receptors, viral antigens, HLA-haplotypes and clinical meta data for a cohort:
+
+-   “A large-scale database of T-cell receptor beta (TCR) sequences and binding associations from natural and synthetic exposure to SARS-CoV-2” ([Nolan et al. 2020](https://r4bds.github.io/references.html#ref-Nolan2020)).
+
+### Aim
+
+The following micro-report has the main goal to study the key characteristics within the binding macromolecules, specifically between the two interactions stated: viral peptides with HLA, and T-cell receptors with peptide - MHC-I complex. Therefore, the following has the aim to study the characteristics and key differences between (1) the peptides binding to the HLAs, and (2) T-cell receptors binding to the pMHC-complexes.
+
+### Load libraries
+
+```{r}
+library("tidyverse")
+library("ggplot2")
+library("table1")
+library("ggseqlogo")
+```
+
+### Load data
+
+```{r}
+meta_data <- read_csv("raw_data/subject-metadata.csv")
+peptide_data <- read_csv("raw_data/peptide-detail-ci.csv")
+```
+
+### Data Description
+
+#### The Subject Meta Data
+
+```{r}
+meta_data |> sample_n(10) #Sample 10 entries from the dataset
+```
+
+Q1: How many observations of how many variables are in the data?
+
+```{r}
+meta_data |> summarise(n_obs = n(), 
+                       n_var = ncol(meta_data))
+```
+
+Q2: Are there groupings in the variables, i.e. do certain variables “go together” somehow?
+
+Pretty sure the `subject` variable has some subjects that can go together, as for example multiple experiments can go for the same subject. We can verify this by using the function `pivot_wider`.
+
+```{r}
+meta_data |> 
+  select(c(Subject, `Cell Type`, Experiment)) |>
+  pivot_wider(id_cols = Subject, names_from = `Cell Type`, values_from = Experiment)
+```
+
+It can be seen that multiple experiments for a single subject are being made, where `<chr[n]>` indicates the `n` experiments that there are being made in a single subject per cell type.
+
+T1: Re-create this plot
+
+```{r}
+meta_data |> 
+  select(c(Cohort, Gender)) |>
+  filter(Gender != "N/A") |>
+  ggplot(aes(x = Cohort,
+             fill = Gender)) +
+  geom_bar(alpha = 0.6, position = position_dodge(preserve = "single"), colour = "black")
+```
+
+T2: Re-create this plot
+
+```{r}
+meta_data |>
+  #cut(Age, breaks = c(20,30,40,50,60,70,80))
+  mutate(Age_group = case_when(
+    20 < Age & Age <= 30 ~ "(20, 30]",
+    30 < Age & Age <= 40 ~ "(30, 40]",
+    40 < Age & Age <= 50 ~ "(40, 50]",
+    50 < Age & Age <= 60 ~ "(50, 60]",
+    60 < Age & Age <= 70 ~ "(60, 70]",
+    70 < Age & Age <= 80 ~ "(70, 80]",
+  )) |>
+  select(c(Age_group, Gender)) |>
+  filter(Gender != "N/A") |>
+  ggplot(aes(x = Age_group,
+             fill = Gender)) +
+  geom_bar(alpha = 0.6, position = "dodge", colour = "black") +
+  theme(panel.grid.major.x = element_blank())
+```
+
+T3: Look at the data and create yet another plot as you see fit. Also skip the redundant variables `Subject`, `Cell Type` and `Target Type`
+
+It can also be classified depending of the `race` variable:
+
+```{r}
+meta_data <- meta_data |>
+  select(-c(Subject, `Cell Type`, `Target Type`))
+
+meta_data |> 
+  select(c(Race, Gender)) |>
+  filter(Gender != "N/A" & Race != "N/A") |>
+  ggplot(aes(x = Race,
+             fill = Gender)) +
+  geom_bar(alpha = 0.6, position = position_dodge(preserve = "single"), colour = "black")
+```
+
+Lets use a cheat code!
+
+```{r}
+meta_data |>
+  mutate(Gender = factor(Gender),
+         Cohort = factor(Cohort)) |>
+  table1(x = formula(~ Gender + Age + Race | Cohort),
+         data = _)
+```
+
+Looks really amazing when rendered!
+
+T4: Create a new version of the `meta_data`, which with respect to allele-data only contains information on class I and also fix the odd naming, e.g. `HLA-A...9` becomes `A1` and `HLA-A...10` becomes `A2` and so on for `B1`, `B2`, `C1` and `C2`(Think: How can we `rename` variables? And here, just do it “manually” per variable). Remember to assign this new data to the same `meta_data` variable
+
+```{r}
+meta_data <- meta_data |>
+  select(-starts_with("D")) |>
+  rename("A1" = ends_with("9"),
+         "A2" = ends_with("10"),
+         "B1" = ends_with("11"),
+         "B2" = ends_with("12"),
+         "C1" = ends_with("13"),
+         "C2" = ends_with("14"))
+```
+
+```{r}
+meta_data |>
+  sample_n(10)
+```
+
+#### The Peptide Details Data
+
+```{r}
+peptide_data |>
+  sample_n(10)
+```
+
+Q3: How many observations of how many variables are in the data?
+
+```{r}
+peptide_data |> summarise(n_obs = n(),
+                          n_var = ncol(peptide_data))
+```
+
+T5: As before, let’s immediately subset the `peptide_data` to the variables of interest: `TCR BioIdentity`, `Experiment` and `Amino Acids`. Remember to assign this new data to the same `peptide_data` variable to avoid cluttering your environment with redundant variables. Bonus: Did you know you can click the `Environment` pane and see which variables you have?
+
+```{r}
+peptide_data <- peptide_data |>
+  select(c(Experiment, `TCR BioIdentity`, `Amino Acids`))
+```
+
+```{r}
+peptide_data |>
+  sample_n(10)
+```
+
+Q4: Is this data tidy? Why/why not?
+
+Even though this data appeared to be tidy. In reality it depends on the concept of "tidy" we are looking for. We can see that (1) there is a row for every observation, (2) there is a column for every variable, but (3) there is/isn't a single vector for each entry in the table. For example, the information contained on the `TCR BioIdentity` variable can either be considered one or three entries, as it also contains data from different genes. In a similar case, there are more than one amino acid in the variable `Amino Acids` for some entries.
+
+T6: See if you can find a way to create the below data, from the above
+
+```{r}
+peptide_data <- peptide_data |>
+  separate_wider_delim(`TCR BioIdentity`,
+           names = c("CDR3b", "V_gene", "J_gene"),
+           delim = "+",
+           cols_remove = TRUE)
+```
+
+```{r}
+peptide_data |> 
+  sample_n(10)
+```
+
+T7: Add a variable, which counts how many peptides are in each observation of `Amino Acids`
+
+```{r}
+peptide_data <- peptide_data |>
+  mutate(n = str_count(`Amino Acids`, ",") + 1)
+```
+
+```{r}
+peptide_data |> 
+  sample_n(10)
+```
+
+T8: Re-create the following plot
+
+```{r}
+peptide_data |>
+  ggplot(aes(x = n,)) +
+  geom_bar(colour="black")
+```
+
+Q4: What is the maximum number of peptides assigned to one observation?
+
+```{r}
+peptide_data |>
+  select(n) |>
+  filter(n == max(n)) |>
+  sample_n(1)
+```
+
+T9: Using the `str_c()` and the `seq()` functions, re-create the below
+
+```{r}
+peptide_data <- peptide_data |>
+  separate_wider_delim(`Amino Acids`,
+                       names = paste0("peptide_", seq(1,13)),
+                       delim = ",",
+                       too_few = "align_start",
+                       cols_remove = TRUE
+  )
+```
+
+```{r}
+peptide_data |>
+  sample_n(10)
+```
+
+Q5: Now, presumable you got a warning, discuss in your group why that is?
+
+I didn't, but is probably with the use of str_c().
+
+Q6: With respect to `peptide_n`, discuss in your group, if this is wide- or long-data?
+
+This can be considered a wide-data type, as the peptide names (`peptide_n`) are currently used as a variable (in a long-data, `peptide_n` would be an observation of a variable `peptide` for example, that indicate the current peptide we are looking at.
+
+T11: Using the `peptide_data`, run a few `sample_n()` calls with varying degree of `n`to make sure, that you get a feeling for what is going on
+
+```{r}
+peptide_data |>
+  sample_n(10)
+```
+
+```{r}
+peptide_data |>
+  sample_n(100)
+```
+
+It is increasing the amounts of observations that are randomly sampled from 10 to 100 in this case. By increasing the number `n` we can access more percentage of the data.
+
+T12: From the `peptide_data` data above, with peptide_1, peptide_2, etc. create this data set using one of the data pivoting functions. Remember to start initially with sampling a smaller data set and then work on that first! Also, once you’re sure you’re good to go, reuse the `peptide_data` variable as we don’t want huge redundant data sets floating around in our environment
+
+```{r}
+peptide_data <- peptide_data |>
+  pivot_longer(cols = starts_with("peptide"), 
+               names_to = "peptides", 
+               values_to = "sequence",
+               values_drop_na = TRUE)
+```
+
+```{r}
+peptide_data |>
+  head(50)
+```
+
+Q7: You will see some `NA`s in the `peptide` variable, discuss in your group from where these arise?
+
+These NAs arise from the fact that not every observation contains 13 peptides, which is the max amount of peptides an observation has been seen to have. Therefore, the NAs are just representations that the observartion contains peptide sequence before they appearance.
+
+Q8: How many rows and columns now and how does this compare with Q3? Discuss why/why not it is different?
+
+```{r}
+peptide_data |>
+  summarise(n_obs = n(), n_var = ncol(peptide_data))
+```
+
+Now we have 596,637 observations (rows) and 7 variables (columns). This is different because by applying `pivot_longer` we are reducing the dimension of the columns while adding more observations to the data. The operation translates that the variables `peptide_1, peptide_2, ..., peptide_13` are now observations under the variable `peptide`. Therefore, there would be a significant amount of observations, as now we will have 13 new ones per entry (minus the NAs values which were removed).
+
+T13: Now, lose the redundant variables `n_peptides` and `peptide_n`, get rid of the `NA`s in the `peptide` column, and make sure that we only have unique observations (i.e. there are no repeated rows/observations).
+
+We have already taken out the NAs in the peptide column, and only have one unique observation per entry.
+
+```{r}
+peptide_data <- peptide_data |>
+  select(-c(n, peptides)) |>
+  rename(peptide = sequence)
+```
+
+```{r}
+peptide_data |>
+  head(10)
+```
+
+Q8: Now how many rows and columns and is this data tidy? Discuss in your group why/why not?
+
+```{r}
+peptide_data |>
+  summarise(n_obs = n(), n_var = ncol(peptide_data))
+```
+
+Because we have already deleted the NAs observations, it still has 596,637 observations (if the NAs weren't remove before, the amount of observations would have been much greater). But now, there are only 5 columns due to the fact we have removed the columns corresponding to `n_peptides` and `peptides`
+
+T14: Use the `str_detect()` function to `filter` the `CDR3b` and `peptide` variables using a `pattern` of `[^ARNDCQEGHILKMFPSTWYV]` and then play with the `negate`parameter so see what happens
+
+```{r}
+peptide_data <- peptide_data |>
+  filter(str_detect(CDR3b, pattern = "[ARNDCQEGHILKMFPSTWYV]"))
+```
+
+T15: Add two new variables to the data, `k_CDR3b` and `k_peptide` each signifying the length of the respective sequences
+
+```{r}
+peptide_data <- peptide_data |>
+  mutate(k_CDR3b = nchar(CDR3b), k_peptide = nchar(peptide))
+```
+
+T16: Re-create this plot
+
+```{r}
+peptide_data |>
+  ggplot(aes(x = k_CDR3b))+
+  geom_histogram(binwidth = 1, color = "black", fill = "gray")
+```
+
+Q9: What is the most predominant length of the CDR3b-sequences?
+
+From the histogram seen, 15 is the predominant length of the CDR3b sequences
+
+T17: Re-create this plot
+
+```{r}
+peptide_data |>
+  ggplot(aes(x = k_peptide))+
+  geom_histogram(binwidth = 1, color = "black", fill = "gray")
+```
+
+Q10: What is the most predominant length of the peptide-sequences?
+
+9 is the predominant length among the peptide sequences
+
+Q11: Discuss in your group, if this data set is tidy or not?
+
+It is a tidy, it accomplish the 3 rules to be a tidy data set (1) one row per observation, (2) one column per variable and (3) one value per entry.
+
+#### Creating one data set from two data sets
+
+```{r}
+meta_data |>
+  sample_n(10)
+```
+
+Q12: Discuss in your group, if this data with respect to the `A1`, `A2`, `B1`, `B2`, `C1`and `C2` variables is a wide or a long data format?
+
+It is clear, as in the case of `peptide_data`, that with respect of the alleles variables `meta_data` is a wide data format.
+
+T18: use either `pivot_wider()` or `pivot_longer()` to create the following data:
+
+```{r}
+meta_data <- meta_data |>
+  pivot_longer(cols = ends_with(c("1","2")), 
+               names_to = "Gene", 
+               values_to = "Allele",
+               values_drop_na = TRUE)
+```
+
+```{r}
+meta_data |>
+  sample_n(10)
+```
+
+Q13: Discuss in your group, which variable(s?) define the same observations between the `peptide_data` and the `meta_data`?
+
+There is only one variable that could match the `meta_data` and `peptide_data`: `Experiment`.
+
+```{r}
+meta_data <- meta_data |>
+  select(Experiment, Allele)
+```
+
+```{r}
+meta_data |>
+  sample_n(10)
+```
+
+T19: Create the following data, according to specifications above:
+
+```{r}
+#Function that will extract the Allele field 1 and 2.
+extract_12 <- function(allele){
+  start <- 1
+  end <- str_locate_all(allele, ":")[[1]][2] - 1
+  str_sub(allele, start, end)
+  }
+```
+
+```{r}
+meta_data <- meta_data |>
+  mutate(Allele_F_1_2 = extract_12(Allele))
+```
+
+```{r}
+meta_data |>
+  sample_n(10)
+```
+
+T20: Clean the data a bit more, by removing the asterisk and redundant variables:
+
+```{r}
+meta_data <- meta_data |>
+  select(-Allele) |>
+  mutate(Allele_F_1_2 = str_remove_all(Allele_F_1_2, "\\*")) |>
+  rename(Allele = Allele_F_1_2)
+```
+
+```{r}
+meta_data |>
+  sample_n(10)
+```
+
+T21: Create a `dplyr` pipeline, starting with the `peptide_data`, which joins it with the `meta_data` and remember to make sure that you get only unique observations of rows. Save this data into a new variable names `peptide_meta_data` (If you get a warning, discuss in your group what it means?)
+
+```{r}
+peptide_meta_data <- peptide_data |>
+  inner_join(meta_data, by = "Experiment")
+```
+
+```{r}
+peptide_meta_data |>
+  sample_n(10)
+```
+
+### Analysis
+
+#### Peptides binding to HLA
+
+T22: Subset the final `peptide_meta_data` data to `A02:01` and unique observations of peptides of length 9 and re-create the below sequence logo
+
+```{r}
+peptide_meta_data |>
+  filter(Allele == "A02:01") |>
+  filter(k_peptide == 9) |>
+  pull(peptide) |>
+  ggseqlogo()+
+  theme_logo()
+```
+
+T23: Repeat for e.g. `B07:02` or another of your favourite alleles
+
+```{r}
+peptide_meta_data |>
+  filter(Allele == "B07:02") |>
+  filter(k_peptide == 9) |>
+  pull(peptide) |>
+  ggseqlogo()+
+  theme_logo()
+```
+
+Q14: Which positions in the peptide determines binding to HLA?
+
+For both alleles A02:01 and B07:02 it appears that positions 2 and 9 determines the binding of the peptides.
+
+#### CDR3b-sequences binding to pMHC
+
+T24: Subset the `peptide_meta_data`, such that the length of the CDR3b is 15, the allele is A02:01 and the peptide is LLFLVLIML and re-create the below sequence logo of the CDR3b sequences:
+
+```{r}
+peptide_meta_data |>
+  filter(k_CDR3b == 15) |>
+  filter(Allele == "A02:01") |>
+  filter(peptide == "LLFLVLIML") |>
+  pull(CDR3b) |>
+  ggseqlogo()+
+  theme_logo()
+```
+
+Q15: In your group, discuss what you see?
+
+We can see the following:
+
+-   The positions 1 and 15 of the CDR3b sequence determines the binding affinity with the pMHC complex.
+
+-   Aminoacids C for the 1st position and F for the last position are completely predominant, giving evidence that this are also the main responsible for the binding affinity.
+
+-   It seems that in the majority of positions aminoacids with polar chemistry contribute as well with the binding affinity.
+
+T25: Play around with other combinations of `k_CDR3b`, `Allele`, and `peptide` and inspect how the logo changes
