@@ -317,7 +317,7 @@ head(gravier_estimates)
 
 ```{r}
 gravier_estimates <- gravier_estimates |>
-  ungroup()
+  ungroup() |>
   filter(term == "early_metastasis") |>
   select(c(gene, p.value, estimate, conf.low, conf.high))
 ```
@@ -331,8 +331,8 @@ head(gravier_estimates)
 ```{r}
 gravier_estimates <- gravier_estimates |>
   mutate(q.value = p.adjust(p.value)) |>
-  mutate(is_significant = case_when(q.value == 1 ~ "no",
-                                    q.value < 1 ~ "yes"))
+  mutate(is_significant = case_when(q.value >= 0.05 ~ "no",
+                                    q.value < 0.05 ~ "yes"))
 ```
 
 ```{r}
@@ -354,10 +354,11 @@ gravier_estimates |>
 
 ```{r}
 gravier_estimates |>
+  mutate(label = case_when(is_significant == "yes" ~ gene,
+                           is_significant == "no" ~ "")) |>
   ggplot(aes(x = estimate,
              y = -log10(p.value),
              color = is_significant))+
   geom_point()+
-  geom_text_repel(data = gravier_estimates %>% filter(is_significant == "yes"),
-                  aes(label = gene))
+  geom_text_repel(aes(label = label))
 ```
