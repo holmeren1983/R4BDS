@@ -341,6 +341,37 @@ head(gravier_estimates)
 
 #### T17: **Re-create this forest plot to finally reveal the results of your analysis** GROUP ASSIGNMENT
 
+## Recreating Plot (Til's version)
+
+```{r}
+library("ggrepel")
+ggplot(gravier_estimates,
+       aes(x = estimate,
+           y = -log10(p.value))) +
+  geom_point(aes(color = -log10(p.value) > 4.8),
+             alpha = 0.5,
+             size = 1) +  
+  labs(x = "Estimates",
+       y = "-log10(p)",
+       title = "Genes Associated with Early Metastasis in Small Node-Negative Breast Carcinoma",
+       subtitle = "Genes highlighted in turquoise were significant after multiple testing correction",
+       caption = "Data from DOI 10.1002/gcc.20820") +
+    theme_minimal(base_size = 10) +
+  theme(legend.position = "none",
+        axis.text.x = element_text(vjust = 5)) +
+  geom_hline(yintercept = 0) +
+  geom_label_repel(data = subset(gravier_estimates, 
+                                 -log10(p.value) > 4.8),
+                  aes(label = gene),
+                  color = "turquoise",
+                  force = 10, 
+                  size = 2,
+                  box.padding = 0,
+                  label.size = 0,
+                  label.padding= 0)
+
+```
+
 ```{r}
 gravier_estimates |>
   filter(is_significant == "yes") |>
